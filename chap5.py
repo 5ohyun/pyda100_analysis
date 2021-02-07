@@ -89,11 +89,54 @@ for i in range(len(predict_data)) :
 
 
 
-predict_data.isna().sum()
+predict_data['period']=predict_data['period'].astype(int)
+
 
 predict_data=predict_data.dropna(subset=['count_1'])
 
 
+predict_data.dtypes
 target_col = ['campaign_name','class_name','gender','count_1','routine','period','is_deleted']
 predict_data = predict_data[target_col]
 predict_data
+
+predict_dummy = pd.get_dummies(predict_data)
+
+del predict_dummy['campaign_name_2_일반']
+del predict_dummy['class_name_2_야간']
+del predict_dummy['gender_M']
+
+
+from sklearn.tree import DecisionTreeClassifier
+import sklearn.model_selection
+
+deleted = predict_dummy.loc[predict_dummy['is_deleted']==1]
+conti = predict_dummy.loc[predict_dummy['is_deleted']==0].sample(len(deleted)) # 비율 1:1로 맞춤
+
+X = pd.concat([deleted,conti],ignore_index = True)
+y = X['is_deleted']
+del X['is_deleted']
+
+X_train, X_test, y_train, y_test = sklearn.model_selection.train_test_split(X,y)
+model = DecisionTreeClassifier(random_state=0)
+model.fit(X_train,y_train)
+y_test_pred = model.predict(X_test)
+
+
+
+model.score(X_train, y_train) # 0.98
+model.score(X_test,y_test) # 0.89
+
+
+model = DecisionTreeClassifier(random_state=0, max_depth=5)
+model.fit(X_train,y_train)
+
+model.score(X_train, y_train) # 0.93
+model.score(X_test,y_test) # 0.91
+
+
+importance = pd.DataFrame({'feature_name':X.columns,'coefficient':model.feature_importances_})
+
+
+
+
